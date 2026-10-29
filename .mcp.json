@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "orders": {
+      "command": "python",
+      "args": ["-m", "orders_mcp"]
+    }
+  }
+}
