@@ -1,4 +1,4 @@
-"""Ask Claude Code one question with this server as its only tool, and print every tool call.
+"""Ask Claude Code one question with this server as its only MCP server, and print every tool call.
 
 Claude gets no built-in tools (no shell, no file reading), so everything it knows about
 the shop has to come through the three MCP tools. Needs the claude CLI, logged in.
