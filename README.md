@@ -3,8 +3,8 @@
 A read-only MCP server that lets Claude look up customers and orders in a shop database.
 
 It is a small, complete example of the kind of server I build: three tools, read-only at
-the database connection, tested through a real MCP client, and tried on real questions in
-Claude Code. The shop is fictional: a coffee-gear store with 20 customers and 60 orders,
+the database connection, covered by tests, and tried in Claude Code on three support-style
+questions. The shop is made up: a coffee-gear store with 20 customers and 60 orders,
 built from a fixed seed.
 
 ## The tools
@@ -19,18 +19,21 @@ What each tool reads, and its limits: [TOOLS.md](TOOLS.md).
 
 ## Read-only
 
-1. The database is opened with `mode=ro`, so SQLite itself refuses any write with
-   `attempt to write a readonly database`. On Postgres or MySQL the same idea is a
-   database user that only has SELECT.
-2. Each tool runs one fixed SELECT with its inputs passed as parameters. No tool takes SQL.
-3. Each tool carries `readOnlyHint`, so MCP clients can show it as read-only. That one is a
-   label for the client, not a lock.
+1. There is no tool that writes. The tools only run SELECT statements written in the code,
+   with their inputs passed as parameters, and no tool takes SQL.
+2. The database is opened with `mode=ro`, so if a later change ever tried to write, SQLite
+   itself would refuse with `attempt to write a readonly database`. On Postgres or MySQL,
+   the same job is done by a database login that is only granted SELECT.
+3. Each tool carries `readOnlyHint`, which tells MCP clients it changes nothing. That is
+   information for the client; it doesn't block anything by itself.
 
-Asked to cancel an order, Claude answered: "I could not cancel order 1057. The orders
-tools available to me are read-only, so none of them can change an order's status."
-That and two other questions are in the [run log](runs/2026-10-29-three-support-questions.md).
+Asked to cancel an order, Claude answered: "I could not cancel the order. The orders tools
+available to me are read-only, so none of them can change an order's status." That run and
+two others are in the [run log](runs/2026-10-29-three-questions.md).
 
 ## Try it
+
+Needs Python 3.11 or newer.
 
 ```
 python -m venv .venv
@@ -59,9 +62,17 @@ Config) with the full path to your venv's Python, then restart Claude Desktop:
 ## Checks
 
 ```
-python -m unittest discover -s tests -t .   # 12 tests, each one through an MCP client
-python scripts/mutation_check.py            # switches off 11 safeguards one at a time; the tests catch all 11
-python scripts/ask_claude.py "<question>"   # asks Claude Code, with this server as its only tool
+python -m unittest discover -s tests -t .   # 15 tests
+python scripts/mutation_check.py            # breaks 14 safeguards one at a time; the tests catch all 14
+python scripts/check_answers.py             # the run log's answers, read straight from the database
 ```
+
+14 of the 15 tests call the tools through an MCP client, one of them with the server
+started as its own process over stdio, the way Claude Code starts it. The other test
+writes to the database connection directly, to check that it refuses.
+
+`python scripts/ask_claude.py "<question>"` asks Claude Code a question with this server as
+its only MCP server and prints every tool call. It needs Claude Code installed and logged
+in, and it uses your own Claude usage.
 
 Built with Python, the official MCP Python SDK (`mcp` 2.3) and SQLite.
